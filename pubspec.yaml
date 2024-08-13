@@ -40,6 +40,7 @@ dependencies:
   just_audio: ^0.9.39
   permission_handler: ^11.3.1
   lottie: ^3.1.2
+  marquee: ^2.2.3
 
 dev_dependencies:
   flutter_test:

@@ -4,7 +4,7 @@ import 'package:lottie/lottie.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 
 class nowplaying extends StatefulWidget {
-  const nowplaying({super.key, required this.songs, required this.initialIndex, required this.audioPlayer});
+  const nowplaying({super.key, required this.songs,   required this.initialIndex, required this.audioPlayer});
   final List<SongModel> songs;
   final int initialIndex;
   final AudioPlayer audioPlayer;
@@ -14,6 +14,9 @@ class nowplaying extends StatefulWidget {
 }
 
 class _NowPlayingState extends State<nowplaying> {
+
+
+
   Duration currentpos = Duration.zero;
   Duration totaldur = Duration.zero;
   double _sliderValue = 0.0;
