@@ -1,28 +1,56 @@
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:marquee/marquee.dart';
-import 'package:musicapp/screens/nowplaying.dart';
+import 'package:musicapp/screens/nowplaying.dart'; // Ensure this import is correct
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class allsongs extends StatefulWidget {
-  const allsongs({super.key});
+  final VoidCallback onThemeChanged2;
+
+  const allsongs({super.key, required this.onThemeChanged2});
 
   @override
   State<allsongs> createState() => _AllSongsState();
 }
 
 class _AllSongsState extends State<allsongs> {
-  String songName = "";
+  bool isdark = false;
+  bool isSearching = false;
+  TextEditingController searchController = TextEditingController();
   List<SongModel>? songs;
+  List<SongModel> filteredSongs = [];
   int? currentIndex;
   late AudioPlayer audioPlayer;
+  String songName = "";
 
   @override
   void initState() {
     super.initState();
     requestPermission();
     audioPlayer = AudioPlayer(); // Initialize the AudioPlayer
+    searchController.addListener(filterSongs);
+  }
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
+
+  void filterSongs() {
+    final query = searchController.text.toLowerCase();
+    print('Search Query: $query'); // Debug print
+    setState(() {
+      if (songs != null) {
+        filteredSongs = songs!.where((song) {
+          final name = song.displayNameWOExt.toLowerCase();
+          final result = name.contains(query);
+          print('Song: $name, Contains Query: $result'); // Debug print
+          return result;
+        }).toList();
+      }
+    });
   }
 
   void requestPermission() {
@@ -36,18 +64,49 @@ class _AllSongsState extends State<allsongs> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: RichText(
+        title: isSearching
+            ? TextField(
+          controller: searchController,
+          decoration: InputDecoration(
+            hintText: 'Search...',
+            border: InputBorder.none,
+          ),
+        )
+            : RichText(
           text: TextSpan(
             text: "JamBox",
-            style: TextStyle(color: Colors.blueAccent, fontSize: 25, fontWeight: FontWeight.bold),
-            children: [TextSpan(text: " Player", style: TextStyle(color: Colors.pink))],
+            style: TextStyle(
+              color: Colors.blueAccent,
+              fontSize: 25,
+              fontWeight: FontWeight.bold,
+            ),
+            children: [
+              TextSpan(
+                text: " Player",
+                style: TextStyle(color: Colors.pink),
+              ),
+            ],
           ),
         ),
         actions: [
           IconButton(
-            onPressed: () {},
-            icon: Icon(Icons.search),
+            onPressed: () {
+              setState(() {
+                isSearching = !isSearching;
+                if (!isSearching) {
+                  searchController.clear();
+                  filterSongs(); // Reset the filtered list when search is closed
+                }
+              });
+            },
+            icon: Icon(isSearching ? Icons.close : Icons.search),
           ),
+          IconButton(onPressed: (){
+            setState(() {
+              widget.onThemeChanged2();
+              isdark = !isdark;
+            });
+          }, icon: Icon(isdark ? Icons.light_mode : Icons.dark_mode))
         ],
       ),
       body: FutureBuilder<List<SongModel>>(
@@ -58,24 +117,34 @@ class _AllSongsState extends State<allsongs> {
           ignoreCase: true,
         ),
         builder: (context, snapshot) {
-          if (snapshot.data == null) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(child: CircularProgressIndicator());
           }
-          if (snapshot.data!.isEmpty) {
+          if (snapshot.hasError) {
+            return Center(child: Text("Error: ${snapshot.error}"));
+          }
+          if (snapshot.data == null || snapshot.data!.isEmpty) {
             return Center(child: Text("No Songs Found"));
           }
-          songs = snapshot.data; // Save songs list
+
+          // Update songs and filteredSongs when data is available
+          if (songs == null) {
+            songs = snapshot.data;
+            filteredSongs = songs!;
+          }
+
           return ListView.builder(
-            itemCount: snapshot.data!.length,
+            itemCount: filteredSongs.length,
             itemBuilder: (context, index) {
+              final song = filteredSongs[index];
               return ListTile(
-                title: Text(snapshot.data![index].displayNameWOExt),
-                subtitle: Text("${snapshot.data![index].artist}"),
+                title: Text(song.displayNameWOExt),
+                subtitle: Text(song.artist ?? "Unknown Artist"),
                 trailing: Icon(Icons.more_horiz),
                 leading: Icon(Icons.music_note),
                 onTap: () {
                   setState(() {
-                    songName = snapshot.data![index].displayNameWOExt;
+                    songName = filteredSongs[index].displayNameWOExt; // Update songName
                     currentIndex = index;
                   });
                   Navigator.push(
@@ -108,7 +177,7 @@ class _AllSongsState extends State<allsongs> {
                     child: Padding(
                       padding: const EdgeInsets.only(top: 10),
                       child: Marquee(
-                        text : songName.isNotEmpty ? songName : "No song selected",
+                        text: songName.isNotEmpty ? songName : "No song selected",
                         style: TextStyle(fontWeight: FontWeight.w500, fontSize: 20),
                         scrollAxis: Axis.horizontal,
                         crossAxisAlignment: CrossAxisAlignment.start,
