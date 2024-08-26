@@ -32,9 +32,4 @@ class _splashscrState extends State<splashscr> {
       )
     );
   }
-  toggleth(){
-    setState(() {
-      widget.onThemeChanged();
-    });
-  }
 }
